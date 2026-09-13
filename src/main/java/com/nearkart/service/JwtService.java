@@ -1,9 +1,12 @@
 package com.nearkart.service;
 
 import com.nearkart.entity.User;
+
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
@@ -13,13 +16,20 @@ import java.util.Date;
 @Service
 public class JwtService {
 
-    // Secret key used to sign JWT tokens
-    private static final String SECRET_KEY =
-            "nearkart-secret-key-for-jwt-security-2026-this-key-is-long-enough";
+    // =========================
+    // JWT SECRET
+    // =========================
 
-    // Token validity: 24 hours
+    @Value("${jwt.secret}")
+    private String secretKey;
+
+
+    // =========================
+    // TOKEN EXPIRATION - 24 HOURS
+    // =========================
+
     private static final long EXPIRATION_TIME =
-            1000 * 60 * 60 * 24;
+            1000L * 60 * 60 * 24;
 
 
     // =========================
@@ -69,11 +79,9 @@ public class JwtService {
     public Long extractUserId(String token) {
 
         Object userId =
-                extractAllClaims(token)
-                        .get("userId");
+                extractAllClaims(token).get("userId");
 
         if (userId instanceof Number) {
-
             return ((Number) userId).longValue();
         }
 
@@ -96,7 +104,9 @@ public class JwtService {
     // VALIDATE TOKEN
     // =========================
 
-    public boolean isTokenValid(String token, User user) {
+    public boolean isTokenValid(
+            String token,
+            User user) {
 
         String email = extractEmail(token);
 
@@ -112,8 +122,7 @@ public class JwtService {
     private boolean isTokenExpired(String token) {
 
         Date expiration =
-                extractAllClaims(token)
-                        .getExpiration();
+                extractAllClaims(token).getExpiration();
 
         return expiration.before(new Date());
     }
@@ -144,7 +153,7 @@ public class JwtService {
     private SecretKey getSigningKey() {
 
         return Keys.hmacShaKeyFor(
-                SECRET_KEY.getBytes(
+                secretKey.getBytes(
                         StandardCharsets.UTF_8
                 )
         );

@@ -1,13 +1,10 @@
 package com.nearkart.controller;
 
 import com.nearkart.dto.CartDTO;
-import com.nearkart.entity.Cart;
 import com.nearkart.entity.CartItem;
 import com.nearkart.service.CartService;
 
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/cart")
@@ -26,29 +23,17 @@ public class CartController {
 
 
     // =========================
-    // CREATE CART
-    // =========================
-
-    @PostMapping
-    public Cart createCart(@RequestBody Cart cart) {
-
-        return cartService.createCart(cart);
-    }
-
-
-    // =========================
-    // ADD PRODUCT TO CART
+    // ADD PRODUCT TO LOGGED-IN USER CART
     // =========================
 
     @PostMapping("/add")
     public CartItem addToCart(
 
-            @RequestParam Long userId,
             @RequestParam Long productId,
+
             @RequestParam Integer quantity) {
 
         return cartService.addToCart(
-                userId,
                 productId,
                 quantity
         );
@@ -56,25 +41,13 @@ public class CartController {
 
 
     // =========================
-    // GET ALL CARTS
+    // GET LOGGED-IN USER CART
     // =========================
 
     @GetMapping
-    public List<CartDTO> getAllCarts() {
+    public CartDTO getMyCart() {
 
-        return cartService.getAllCarts();
-    }
-
-
-    // =========================
-    // GET CART BY ID
-    // =========================
-
-    @GetMapping("/{id}")
-    public CartDTO getCartById(
-            @PathVariable Long id) {
-
-        return cartService.getCartById(id);
+        return cartService.getMyCart();
     }
 
 
@@ -102,6 +75,7 @@ public class CartController {
 
     @DeleteMapping("/item/{cartItemId}")
     public void removeCartItem(
+
             @PathVariable Long cartItemId) {
 
         cartService.removeCartItem(cartItemId);
@@ -109,13 +83,12 @@ public class CartController {
 
 
     // =========================
-    // DELETE CART
+    // DELETE LOGGED-IN USER CART
     // =========================
 
-    @DeleteMapping("/{id}")
-    public void deleteCart(
-            @PathVariable Long id) {
+    @DeleteMapping
+    public void deleteMyCart() {
 
-        cartService.deleteCart(id);
+        cartService.deleteMyCart();
     }
 }

@@ -23,6 +23,7 @@ public class UserController {
         return userService.createUser(user);
     }
 
+
     // Get All Users
     @GetMapping
     public List<UserDTO> getAllUsers() {

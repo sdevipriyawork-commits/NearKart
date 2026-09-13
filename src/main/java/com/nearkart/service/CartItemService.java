@@ -37,20 +37,32 @@ public class CartItemService {
         return cartItemRepository.save(cartItem);
     }
 
-    // Real Add Product to Cart
-    public CartItem addToCart(Long userId, Long productId, Integer quantity) {
+    // Add Product to Cart
+    public CartItem addToCart(
+            Long userId,
+            Long productId,
+            Integer quantity) {
 
         // Find User
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() ->
+                        new RuntimeException("User not found"));
 
         // Find Product
         Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new RuntimeException("Product not found"));
+                .orElseThrow(() ->
+                        new RuntimeException("Product not found"));
 
         // Find Cart
+        // If Cart does not exist, create it automatically
         Cart cart = cartRepository.findByUser(user)
-                .orElseThrow(() -> new RuntimeException("Cart not found"));
+                .orElseGet(() -> {
+
+                    Cart newCart = new Cart();
+                    newCart.setUser(user);
+
+                    return cartRepository.save(newCart);
+                });
 
         // Check if product already exists in cart
         CartItem cartItem = cartItemRepository
@@ -59,12 +71,16 @@ public class CartItemService {
 
         if (cartItem != null) {
 
-            // Product already exists → increase quantity
-            cartItem.setQuantity(cartItem.getQuantity() + quantity);
+            // Product already exists
+            // Increase quantity
+            cartItem.setQuantity(
+                    cartItem.getQuantity() + quantity
+            );
 
         } else {
 
-            // Product does not exist → create new CartItem
+            // Product does not exist
+            // Create new CartItem
             cartItem = new CartItem();
 
             cartItem.setCart(cart);
@@ -79,10 +95,12 @@ public class CartItemService {
     public List<CartItem> getCartItemsByUser(Long userId) {
 
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() ->
+                        new RuntimeException("User not found"));
 
         Cart cart = cartRepository.findByUser(user)
-                .orElseThrow(() -> new RuntimeException("Cart not found"));
+                .orElseThrow(() ->
+                        new RuntimeException("Cart not found"));
 
         return cartItemRepository.findByCart(cart);
     }
@@ -94,28 +112,37 @@ public class CartItemService {
 
     // Get Cart Item By ID
     public CartItem getCartItemById(Long id) {
-        return cartItemRepository.findById(id).orElse(null);
+        return cartItemRepository.findById(id)
+                .orElse(null);
     }
+
     // Update Cart Item Quantity
-    public CartItem updateQuantity(Long id, Integer quantity) {
+    public CartItem updateQuantity(
+            Long id,
+            Integer quantity) {
 
         CartItem cartItem = cartItemRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Cart item not found"));
+                .orElseThrow(() ->
+                        new RuntimeException("Cart item not found"));
 
         cartItem.setQuantity(quantity);
 
         return cartItemRepository.save(cartItem);
     }
+
     // Clear Cart for a User
     public void clearCart(Long userId) {
 
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() ->
+                        new RuntimeException("User not found"));
 
         Cart cart = cartRepository.findByUser(user)
-                .orElseThrow(() -> new RuntimeException("Cart not found"));
+                .orElseThrow(() ->
+                        new RuntimeException("Cart not found"));
 
-        List<CartItem> cartItems = cartItemRepository.findByCart(cart);
+        List<CartItem> cartItems =
+                cartItemRepository.findByCart(cart);
 
         cartItemRepository.deleteAll(cartItems);
     }

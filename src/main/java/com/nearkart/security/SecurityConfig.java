@@ -14,6 +14,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.Arrays;
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -21,17 +27,11 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
-
-    // =========================
-    // CONSTRUCTOR
-    // =========================
-
     public SecurityConfig(
             JwtAuthenticationFilter jwtAuthenticationFilter) {
 
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
     }
-
 
     // =========================
     // PASSWORD ENCODER
@@ -39,10 +39,54 @@ public class SecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-
         return new BCryptPasswordEncoder();
     }
 
+    // =========================
+    // CORS CONFIGURATION
+    // =========================
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+
+        CorsConfiguration configuration =
+                new CorsConfiguration();
+
+        // Development + testing
+        configuration.setAllowedOriginPatterns(
+                List.of("*")
+        );
+
+        configuration.setAllowedMethods(
+                Arrays.asList(
+                        "GET",
+                        "POST",
+                        "PUT",
+                        "DELETE",
+                        "OPTIONS"
+                )
+        );
+
+        configuration.setAllowedHeaders(
+                List.of("*")
+        );
+
+        configuration.setExposedHeaders(
+                List.of("Authorization")
+        );
+
+        configuration.setAllowCredentials(false);
+
+        UrlBasedCorsConfigurationSource source =
+                new UrlBasedCorsConfigurationSource();
+
+        source.registerCorsConfiguration(
+                "/**",
+                configuration
+        );
+
+        return source;
+    }
 
     // =========================
     // SECURITY CONFIGURATION
@@ -55,11 +99,18 @@ public class SecurityConfig {
         http
 
                 // =========================
+                // ENABLE CORS
+                // =========================
+
+                .cors(cors -> cors.configurationSource(
+                        corsConfigurationSource()
+                ))
+
+                // =========================
                 // DISABLE CSRF
                 // =========================
 
                 .csrf(csrf -> csrf.disable())
-
 
                 // =========================
                 // STATELESS SESSION
@@ -71,7 +122,6 @@ public class SecurityConfig {
                         )
                 )
 
-
                 // =========================
                 // DISABLE DEFAULT LOGIN
                 // =========================
@@ -80,16 +130,23 @@ public class SecurityConfig {
 
                 .httpBasic(basic -> basic.disable())
 
-
                 // =========================
                 // API PERMISSIONS
                 // =========================
 
                 .authorizeHttpRequests(auth -> auth
 
+                        // =========================
+                        // PREFLIGHT OPTIONS
+                        // =========================
+
+                        .requestMatchers(
+                                HttpMethod.OPTIONS,
+                                "/**"
+                        ).permitAll()
 
                         // =========================
-                        // ROOT PAGE - PUBLIC
+                        // ROOT
                         // =========================
 
                         .requestMatchers(
@@ -97,15 +154,13 @@ public class SecurityConfig {
                                 "/error"
                         ).permitAll()
 
-
                         // =========================
-                        // AUTH APIs - PUBLIC
+                        // AUTH APIs
                         // =========================
 
                         .requestMatchers(
                                 "/api/auth/**"
                         ).permitAll()
-
 
                         // =========================
                         // PUBLIC GET APIs
@@ -118,19 +173,29 @@ public class SecurityConfig {
                                 "/api/categories/**"
                         ).permitAll()
 
-
                         // =========================
-                        // USERS - ADMIN ONLY
+                        // USERS
+                        // =========================
+                        // GET profile allowed for
+                        // logged-in user roles.
+                        // Actual OWN-PROFILE check
+                        // should be handled in
+                        // UserController/Service.
                         // =========================
 
                         .requestMatchers(
+                                HttpMethod.GET,
                                 "/api/users/**"
-                        ).hasRole("ADMIN")
-
+                        ).hasAnyRole(
+                                "ADMIN",
+                                "CUSTOMER",
+                                "SHOP_OWNER",
+                                "DELIVERY_PARTNER",
+                                "USER"
+                        )
 
                         // =========================
                         // CATEGORY MANAGEMENT
-                        // ADMIN ONLY
                         // =========================
 
                         .requestMatchers(
@@ -147,14 +212,11 @@ public class SecurityConfig {
                                 HttpMethod.DELETE,
                                 "/api/categories/**"
                         ).hasRole("ADMIN")
-
 
                         // =========================
                         // PRODUCT MANAGEMENT
                         // =========================
 
-                        // CREATE PRODUCT
-
                         .requestMatchers(
                                 HttpMethod.POST,
                                 "/api/products/**"
@@ -162,9 +224,6 @@ public class SecurityConfig {
                                 "ADMIN",
                                 "SHOP_OWNER"
                         )
-
-
-                        // UPDATE PRODUCT
 
                         .requestMatchers(
                                 HttpMethod.PUT,
@@ -174,9 +233,6 @@ public class SecurityConfig {
                                 "SHOP_OWNER"
                         )
 
-
-                        // DELETE PRODUCT
-
                         .requestMatchers(
                                 HttpMethod.DELETE,
                                 "/api/products/**"
@@ -184,14 +240,11 @@ public class SecurityConfig {
                                 "ADMIN",
                                 "SHOP_OWNER"
                         )
-
 
                         // =========================
                         // SHOP MANAGEMENT
                         // =========================
 
-                        // CREATE SHOP
-
                         .requestMatchers(
                                 HttpMethod.POST,
                                 "/api/shops/**"
@@ -199,9 +252,6 @@ public class SecurityConfig {
                                 "ADMIN",
                                 "SHOP_OWNER"
                         )
-
-
-                        // UPDATE SHOP
 
                         .requestMatchers(
                                 HttpMethod.PUT,
@@ -211,9 +261,6 @@ public class SecurityConfig {
                                 "SHOP_OWNER"
                         )
 
-
-                        // DELETE SHOP
-
                         .requestMatchers(
                                 HttpMethod.DELETE,
                                 "/api/shops/**"
@@ -222,24 +269,21 @@ public class SecurityConfig {
                                 "SHOP_OWNER"
                         )
 
-
                         // =========================
-                        // CART - LOGIN REQUIRED
+                        // CART
                         // =========================
 
                         .requestMatchers(
                                 "/api/cart/**"
                         ).authenticated()
 
-
                         // =========================
-                        // ORDERS - LOGIN REQUIRED
+                        // ORDERS
                         // =========================
 
                         .requestMatchers(
                                 "/api/orders/**"
                         ).authenticated()
-
 
                         // =========================
                         // EVERYTHING ELSE
@@ -247,7 +291,6 @@ public class SecurityConfig {
 
                         .anyRequest().authenticated()
                 )
-
 
                 // =========================
                 // ADD JWT FILTER
@@ -257,7 +300,6 @@ public class SecurityConfig {
                         jwtAuthenticationFilter,
                         UsernamePasswordAuthenticationFilter.class
                 );
-
 
         return http.build();
     }

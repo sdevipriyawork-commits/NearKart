@@ -10,8 +10,10 @@ import com.nearkart.exception.ResourceNotFoundException;
 import com.nearkart.repository.CartItemRepository;
 import com.nearkart.repository.CartRepository;
 import com.nearkart.repository.ProductRepository;
-import com.nearkart.repository.UserRepository;
 
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -22,7 +24,6 @@ public class CartService {
 
     private final CartRepository cartRepository;
     private final CartItemRepository cartItemRepository;
-    private final UserRepository userRepository;
     private final ProductRepository productRepository;
 
 
@@ -33,25 +34,37 @@ public class CartService {
     public CartService(
             CartRepository cartRepository,
             CartItemRepository cartItemRepository,
-            UserRepository userRepository,
             ProductRepository productRepository) {
 
         this.cartRepository = cartRepository;
         this.cartItemRepository = cartItemRepository;
-        this.userRepository = userRepository;
         this.productRepository = productRepository;
     }
 
 
     // =========================
-    // CREATE CART
+    // GET CURRENT LOGGED-IN USER
     // =========================
 
-    public Cart createCart(Cart cart) {
+    private User getCurrentUser() {
 
-        cart.setCreatedAt(LocalDateTime.now());
+        Authentication authentication =
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication();
 
-        return cartRepository.save(cart);
+
+        if (authentication == null ||
+                !authentication.isAuthenticated() ||
+                !(authentication.getPrincipal() instanceof User)) {
+
+            throw new AccessDeniedException(
+                    "User is not authenticated"
+            );
+        }
+
+
+        return (User) authentication.getPrincipal();
     }
 
 
@@ -60,29 +73,33 @@ public class CartService {
     // =========================
 
     public CartItem addToCart(
-            Long userId,
             Long productId,
             Integer quantity) {
 
-        // FIND USER
-        User user = userRepository.findById(userId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "User not found with id: " + userId
-                        )
-                );
+        // VALIDATE QUANTITY
+        if (quantity == null || quantity <= 0) {
+
+            throw new IllegalArgumentException(
+                    "Quantity must be greater than 0"
+            );
+        }
+
+
+        // GET LOGGED-IN USER
+        User user = getCurrentUser();
 
 
         // FIND PRODUCT
         Product product = productRepository.findById(productId)
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
-                                "Product not found with id: " + productId
+                                "Product not found with id: "
+                                        + productId
                         )
                 );
 
 
-        // FIND CART OR CREATE NEW CART
+        // FIND USER CART OR CREATE NEW CART
         Cart cart = cartRepository.findByUser(user)
                 .orElseGet(() -> {
 
@@ -95,7 +112,7 @@ public class CartService {
                 });
 
 
-        // CHECK IF PRODUCT ALREADY EXISTS IN CART
+        // CHECK IF PRODUCT ALREADY EXISTS
         CartItem cartItem = cartItemRepository
                 .findByCartAndProduct(cart, product)
                 .orElse(null);
@@ -124,30 +141,25 @@ public class CartService {
 
 
     // =========================
-    // GET ALL CARTS
+    // GET LOGGED-IN USER CART
     // =========================
 
-    public List<CartDTO> getAllCarts() {
+    public CartDTO getMyCart() {
 
-        return cartRepository.findAll()
-                .stream()
-                .map(this::convertToDTO)
-                .toList();
-    }
+        User user = getCurrentUser();
 
 
-    // =========================
-    // GET CART BY ID
-    // =========================
+        Cart cart = cartRepository.findByUser(user)
+                .orElseGet(() -> {
 
-    public CartDTO getCartById(Long id) {
+                    Cart newCart = new Cart();
 
-        Cart cart = cartRepository.findById(id)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Cart not found with id: " + id
-                        )
-                );
+                    newCart.setUser(user);
+                    newCart.setCreatedAt(LocalDateTime.now());
+
+                    return cartRepository.save(newCart);
+                });
+
 
         return convertToDTO(cart);
     }
@@ -161,6 +173,20 @@ public class CartService {
             Long cartItemId,
             Integer quantity) {
 
+        // VALIDATE QUANTITY
+        if (quantity == null || quantity <= 0) {
+
+            throw new IllegalArgumentException(
+                    "Quantity must be greater than 0"
+            );
+        }
+
+
+        // GET CURRENT USER
+        User currentUser = getCurrentUser();
+
+
+        // FIND CART ITEM
         CartItem cartItem = cartItemRepository
                 .findById(cartItemId)
                 .orElseThrow(() ->
@@ -169,6 +195,21 @@ public class CartService {
                                         + cartItemId
                         )
                 );
+
+
+        // =========================
+        // OWNERSHIP CHECK
+        // =========================
+
+        if (!cartItem.getCart()
+                .getUser()
+                .getId()
+                .equals(currentUser.getId())) {
+
+            throw new AccessDeniedException(
+                    "You are not allowed to update this cart item"
+            );
+        }
 
 
         cartItem.setQuantity(quantity);
@@ -183,6 +224,9 @@ public class CartService {
 
     public void removeCartItem(Long cartItemId) {
 
+        User currentUser = getCurrentUser();
+
+
         CartItem cartItem = cartItemRepository
                 .findById(cartItemId)
                 .orElseThrow(() ->
@@ -193,24 +237,50 @@ public class CartService {
                 );
 
 
+        // =========================
+        // OWNERSHIP CHECK
+        // =========================
+
+        if (!cartItem.getCart()
+                .getUser()
+                .getId()
+                .equals(currentUser.getId())) {
+
+            throw new AccessDeniedException(
+                    "You are not allowed to delete this cart item"
+            );
+        }
+
+
         cartItemRepository.delete(cartItem);
     }
 
 
     // =========================
-    // DELETE CART
+    // DELETE LOGGED-IN USER CART
     // =========================
 
-    public void deleteCart(Long id) {
+    public void deleteMyCart() {
 
-        Cart cart = cartRepository.findById(id)
+        User currentUser = getCurrentUser();
+
+
+        Cart cart = cartRepository.findByUser(currentUser)
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
-                                "Cart not found with id: " + id
+                                "Cart not found"
                         )
                 );
 
 
+        // DELETE CART ITEMS FIRST
+        List<CartItem> cartItems =
+                cartItemRepository.findByCart(cart);
+
+        cartItemRepository.deleteAll(cartItems);
+
+
+        // DELETE CART
         cartRepository.delete(cart);
     }
 
@@ -238,10 +308,7 @@ public class CartService {
         dto.setCreatedAt(cart.getCreatedAt());
 
 
-        // =========================
         // GET CART ITEMS
-        // =========================
-
         List<CartItemDTO> items =
                 cartItemRepository.findByCart(cart)
                         .stream()
@@ -264,7 +331,6 @@ public class CartService {
 
         CartItemDTO dto = new CartItemDTO();
 
-
         dto.setId(cartItem.getId());
 
 
@@ -274,9 +340,16 @@ public class CartService {
         if (product != null) {
 
             dto.setProductId(product.getId());
-            dto.setProductName(product.getProductName());
+
+            dto.setProductName(
+                    product.getProductName()
+            );
+
             dto.setPrice(product.getPrice());
-            dto.setImageUrl(product.getImageUrl());
+
+            dto.setImageUrl(
+                    product.getImageUrl()
+            );
 
 
             // CALCULATE SUBTOTAL
