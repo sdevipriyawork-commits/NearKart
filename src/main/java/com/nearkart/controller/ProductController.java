@@ -1,6 +1,6 @@
 package com.nearkart.controller;
-import com.nearkart.dto.ProductDTO;
 
+import com.nearkart.dto.ProductDTO;
 import com.nearkart.entity.Product;
 import com.nearkart.service.ProductService;
 
@@ -20,25 +20,42 @@ public class ProductController {
         this.productService = productService;
     }
 
-    // Create Product
+    // =========================
+    // CREATE PRODUCT
+    // =========================
+
     @PostMapping
     public Product createProduct(
-            @Valid @RequestBody Product product) {
+            @Valid @RequestBody ProductDTO productDTO) {
 
-        return productService.createProduct(product);
+        return productService.createProduct(productDTO);
     }
 
-    // Get All Products
+    // =========================
+    // GET ALL PRODUCTS
+    // =========================
+
     @GetMapping
     public List<ProductDTO> getAllProducts() {
+
         return productService.getAllProducts();
     }
-    // Get Product By ID
+
+    // =========================
+    // GET PRODUCT BY ID
+    // =========================
+
     @GetMapping("/{id}")
-    public ProductDTO getProductById(@PathVariable Long id) {
+    public ProductDTO getProductById(
+            @PathVariable Long id) {
+
         return productService.getProductById(id);
     }
-    // Update Product
+
+    // =========================
+    // UPDATE PRODUCT
+    // =========================
+
     @PutMapping("/{id}")
     public Product updateProduct(
             @PathVariable Long id,
@@ -47,9 +64,14 @@ public class ProductController {
         return productService.updateProduct(id, product);
     }
 
-    // Delete Product
+    // =========================
+    // DELETE PRODUCT
+    // =========================
+
     @DeleteMapping("/{id}")
-    public void deleteProduct(@PathVariable Long id) {
+    public void deleteProduct(
+            @PathVariable Long id) {
+
         productService.deleteProduct(id);
     }
 }
