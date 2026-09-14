@@ -65,6 +65,30 @@ public class UserService {
 
 
     // =========================
+    // UPDATE USER
+    // =========================
+
+    public UserDTO updateUser(Long id, User userDetails) {
+
+        User user = userRepository.findById(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "User not found with id: " + id
+                        )
+                );
+
+        // Update profile details
+        user.setName(userDetails.getName());
+        user.setEmail(userDetails.getEmail());
+        user.setPhone(userDetails.getPhone());
+
+        User updatedUser = userRepository.save(user);
+
+        return convertToDTO(updatedUser);
+    }
+
+
+    // =========================
     // DELETE USER
     // =========================
 

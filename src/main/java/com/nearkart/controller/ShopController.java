@@ -27,9 +27,9 @@ public class ShopController {
     // =========================
 
     @PostMapping
-    public Shop createShop(@RequestBody Shop shop) {
+    public ShopDTO createShop(@RequestBody ShopDTO shopDTO) {
 
-        return shopService.createShop(shop);
+        return shopService.createShop(shopDTO);
     }
 
     // =========================
@@ -52,6 +52,7 @@ public class ShopController {
 
         return shopService.getShopById(id);
     }
+
     // =========================
     // UPDATE SHOP
     // =========================

@@ -52,7 +52,6 @@ public class SecurityConfig {
         CorsConfiguration configuration =
                 new CorsConfiguration();
 
-        // Development + testing
         configuration.setAllowedOriginPatterns(
                 List.of("*")
         );
@@ -99,15 +98,17 @@ public class SecurityConfig {
         http
 
                 // =========================
-                // ENABLE CORS
+                // CORS
                 // =========================
 
-                .cors(cors -> cors.configurationSource(
-                        corsConfigurationSource()
-                ))
+                .cors(cors ->
+                        cors.configurationSource(
+                                corsConfigurationSource()
+                        )
+                )
 
                 // =========================
-                // DISABLE CSRF
+                // CSRF
                 // =========================
 
                 .csrf(csrf -> csrf.disable())
@@ -137,7 +138,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
 
                         // =========================
-                        // PREFLIGHT OPTIONS
+                        // OPTIONS
                         // =========================
 
                         .requestMatchers(
@@ -155,7 +156,7 @@ public class SecurityConfig {
                         ).permitAll()
 
                         // =========================
-                        // AUTH APIs
+                        // AUTH
                         // =========================
 
                         .requestMatchers(
@@ -174,13 +175,7 @@ public class SecurityConfig {
                         ).permitAll()
 
                         // =========================
-                        // USERS
-                        // =========================
-                        // GET profile allowed for
-                        // logged-in user roles.
-                        // Actual OWN-PROFILE check
-                        // should be handled in
-                        // UserController/Service.
+                        // USER - GET PROFILE
                         // =========================
 
                         .requestMatchers(
@@ -193,6 +188,15 @@ public class SecurityConfig {
                                 "DELIVERY_PARTNER",
                                 "USER"
                         )
+
+                        // =========================
+                        // USER - UPDATE PROFILE
+                        // =========================
+
+                        .requestMatchers(
+                                HttpMethod.PUT,
+                                "/api/users/**"
+                        ).authenticated()
 
                         // =========================
                         // CATEGORY MANAGEMENT
@@ -293,7 +297,7 @@ public class SecurityConfig {
                 )
 
                 // =========================
-                // ADD JWT FILTER
+                // JWT FILTER
                 // =========================
 
                 .addFilterBefore(
